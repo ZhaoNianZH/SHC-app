@@ -46,12 +46,11 @@ efficient pump rate should be.
 # Required Libraries #
 import matplotlib.pyplot as plt
 import numpy as np
-import numpy.linalg
 # from mpmath import lambertw
 from scipy.special import lambertw
 
 import streamlit as st
-import matplotlib.pyplot as plt
+
 
 
 ##############
