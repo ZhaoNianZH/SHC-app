@@ -194,7 +194,7 @@ class StatepointAnalysis:
         y = self.flux(x, sludge_volume_index)
         return x, y
 
-    def plot_spa(self, q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss, solids_max=20):
+    def plot_spa(self, q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss, solids_max=15):
         """
         绘制状态点分析图。
 
