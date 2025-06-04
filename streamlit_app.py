@@ -96,7 +96,8 @@ class StatepointAnalysis:
             "SVISN": (0.261, 0.00170, 0.00370, 14.9),
             "SVISS": (0.211, 0.00236, 0.00593, 14.6),
             "SVIGN": (0.351, 0.00058, 0.00602, 18.2),
-            "SVIGS": (0.245, 0.00296, 0.01073, 24.3)
+            "SVIGS": (0.245, 0.00296, 0.01073, 24.3),
+            "Custom": (0.165, 0.00159, -1.871/self.SVI, 1)
         }
         return test_dict[test_type]
 
@@ -197,21 +198,16 @@ class StatepointAnalysis:
     def plot_spa(self, q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss, solids_max=15):
         """
         绘制状态点分析图。
-
-        参数:
-            q_in (float): 进水流量（m³/h）。
-            q_ras (float): 泥水回流流量（m³/h）。
-            tank_area (float): 每个澄清器的面积（平方米）。
-            number_of_tanks (int): 二级澄清器的数量。
-            sludge_volume_index (float): 泥水体积指数（SVI）。
-            mixed_liquor_ss (float): 混合液悬浮固体浓度（g/L）。
-            solids_max (float): 最大污泥浓度（g/L），默认为 20。
         """
         x_overflow_rate, y_overflow_rate = self.surface_overflow_calc(q_in, tank_area, number_of_tanks, sludge_volume_index)
+        surface_overflow_rate = y_overflow_rate[1] / x_overflow_rate[1]
+        solids_max = x_overflow_rate[1] + 2
         x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
         x_flux, y_flux = self.settle_flux(sludge_volume_index, solids_max)
-        surface_overflow_rate = y_overflow_rate[1] / x_overflow_rate[1]
+        
         state_point = surface_overflow_rate * mixed_liquor_ss
+        
+        X_r = x_underflow_rate[1]
 
         # 创建一个新的 figure 对象
         fig, ax = plt.subplots()
@@ -219,17 +215,23 @@ class StatepointAnalysis:
         ax.plot(x_underflow_rate, y_underflow_rate, "orange", label="Solids Underflow Rate")
         ax.plot(x_flux, y_flux, "b", label="Settle Flux")
         ax.plot(mixed_liquor_ss, state_point, "ro", label="State Point")
+        ax.vlines(mixed_liquor_ss, 0, state_point, "r","--")
         ax.axis([0, solids_max, 0, y_overflow_rate[1]])
         ax.grid(True)
 
-        ras_sub = r'$Q_{RAS}$'
-        txt = "%s = %s m3/h" % (ras_sub, q_ras)
+        # 固定图例位置到右上角
+        
 
-        ax.set_title(f"State Point Analysis: {txt}")
+        # 调整 X 轴和 Y 轴刻度为 1
+        ax.xaxis.set_major_locator(plt.MultipleLocator(2.5))
+        ax.yaxis.set_major_locator(plt.MultipleLocator(1))
+
+        txt = f"SOR：{surface_overflow_rate:.2f}，RAS：{q_ras/q_in:.2f}， Return Flow：{q_ras:.1f} m$^3$/h, X_$r$：{X_r:.1f}g/L"
+
+        ax.set_title(f"State Point Analysis:\n {txt}")
         ax.set_xlabel("Solids Concentration (g/L)")
         ax.set_ylabel("Solids Flux (kg/m2/h)")
-        #ax.text(0.5 * solids_max, 0.5 * y_overflow_rate[1], txt, size=12, backgroundcolor="white", bbox=dict(facecolor="white"))
-        ax.legend()
+        ax.legend(loc='upper right')
 
         # 使用 st.pyplot 显示图表
         st.pyplot(fig)
@@ -302,7 +304,7 @@ def main():
     # 输入框
     number_of_tanks = st.number_input("Number of Secondary Clarifiers", value=3, min_value=1)
     tank_area = st.number_input("Area of Each Clarifier (m²)", value=1986.0, min_value=1.0)
-    test_type = st.selectbox("Test Type", ["SVISN", "SVISS", "SVIGN", "SVIGS"])
+    test_type = st.selectbox("Test Type", ["SVISN", "SVISS", "SVIGN", "SVIGS","Custom"])
     sludge_volume_index = st.number_input("Sludge Volume Index (SVI)", value=140.0, min_value=0.0)
     mixed_liquor_ss = st.number_input("Mixed Liquor Suspended Solids (g/L)", value=4.3, min_value=0.0)
     q_in = st.number_input("Influent Flow Rate (m³/h)", value=5678.0, min_value=0.0)
