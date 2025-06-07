@@ -305,13 +305,13 @@ class StatepointAnalysis:
         ax.xaxis.set_major_locator(plt.MultipleLocator(2))
         ax.yaxis.set_major_locator(plt.MultipleLocator(1))
 
-        txt = f"SOR: {surface_overflow_rate:.2f} m/h, RAS: {q_ras/q_in:.2f}, Returnflow: {q_ras:.1f} m$^3$/h, X$_r$: {x_r:.1f}g/L"
+        txt = f"SLR: {y_underflow_rate[0]:.1f} (kg/m$^2$/h), SOR: {surface_overflow_rate:.2f} m/h, RAS: {q_ras/q_in:.1f}, Q$_r$: {q_ras:.1f} m$^3$/h, X$_r$: {x_r:.1f}g/L"
 
-        ax.set_title(f"State Point Analysis:\n {txt}", fontsize=10)  # 修改：缩小标题字体大小
+        ax.set_title(f"{txt}", fontsize=10)  # 修改：缩小标题字体大小
         ax.set_xlabel("Solids Concentration (g/L)")
         ax.set_ylabel("Solids Flux (kg/m$^2$/h)")
 
-        return fig
+        return fig,txt
 
 
 
@@ -322,7 +322,7 @@ def page_ras_optimal_calculation():
     计算RAS最优解。
   
     """
-    st.title("RAS Optimal Calculation")
+    st.title("Optimal RAS Calculation")
     
     # 输入框，增大步长
     number_of_tanks = st.number_input("Number of Secondary Clarifiers", value=3, min_value=1, step=1)
@@ -371,12 +371,12 @@ def page_ras_optimal_calculation():
             number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in
         )
         q_ras_opt, op_qras = spa.find_state_point()
-
+        fig,txt = spa.plot_spa(q_in, op_qras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
         # 更新结果
         st.session_state.ras_params["result"] = {
             "q_ras_opt": q_ras_opt,
             "op_qras": op_qras,
-            "fig": spa.plot_spa(q_in, op_qras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
+            "fig": fig
         }
 
     # 显示结果
@@ -442,7 +442,7 @@ def page_shc_analysis():
         spa = StatepointAnalysis(
             number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in, q_ras
         )
-        fig = spa.plot_spa(q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
+        fig,txt = spa.plot_spa(q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
 
         # 更新结果
         st.session_state.shc_params["result"] = {
@@ -452,11 +452,12 @@ def page_shc_analysis():
     # 显示结果
     if st.session_state.shc_params["result"]:
         st.pyplot(st.session_state.shc_params["result"]["fig"])
+        #st.write(txt)
 
     # 添加图片
     st.image("pictures/SHC_chart.png", caption="SHC Chart", use_container_width=True)
-    st.write("**SHC I (underflow condition)** \nif the underflow line happens to fall outside of the flux curve, we cannot get the solids out from the clarifier (settling is insufficient)")
-    st.write("**SHC II (feed load condition)** \nif the state point happens to fall outside of the flux curve, the load in the feed layer is more than what the clarifier can handle at that point (so it goes up eventually, as the clarifier is overloaded).")
+    st.write("**SHC I (underflow condition):**  if the underflow line happens to fall outside of the flux curve, we cannot get the solids out from the clarifier (settling is insufficient)")    
+    st.write("**SHC II (feed load condition):**  if the state point happens to fall outside of the flux curve, the load in the feed layer is more than what the clarifier can handle at that point (so it goes up eventually, as the clarifier is overloaded).")
 
 
 def main():
