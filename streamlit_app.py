@@ -1,7 +1,6 @@
 
 """
 STATE POINT ANALYSIS
-by Tommy Thompson
 
 Background
 Wastewater treatment is a biochemical and mechanical process in which municipal and commercial wastewater
@@ -35,20 +34,18 @@ The following module aims to maximize energy efficiency, minimize risk of losing
 operation of secondary treatment by analytically determining the precise point below which the sludge
 blanket would begin to rise and threaten to exit the system.
 
-Future Work
-Ultimately, the goal would be to integrate operational data into this tool as the inputs, such that the
-output graph and Q_RAS values update during set time intervals to inform operators of what the most
-efficient pump rate should be.
+STATE POINT ANALYSIS
+Optimal RAS calculation by Tommy Thompson
+Sludge Handling Classification by ZHZN
+Streamlit implementation by ZHZN
 
-
+Last edit 2025-06-08
 """
 
 # Required Libraries #
 import matplotlib.pyplot as plt
 import numpy as np
-# from mpmath import lambertw
 from scipy.special import lambertw
-
 import streamlit as st
 
 
@@ -62,7 +59,7 @@ class StatepointAnalysis:
     它通过计算污泥通量、溢流率和污泥回流率等参数，帮助操作员确定最高效的污泥回流泵速率。
     """
 
-    def __init__(self, number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in):
+    def __init__(self, number_of_tanks:int, tank_area:float, test_type:str, sludge_volume_index:int, mixed_liquor_ss:float, q_in:float, q_ras:float = None):
         """
         初始化 StatepointAnalysis 类实例。
 
@@ -80,6 +77,7 @@ class StatepointAnalysis:
         self.SVI = sludge_volume_index  # 泥水体积指数（SVI）
         self.MLSS = mixed_liquor_ss  # 混合液悬浮固体浓度（g/L）
         self.Qin = q_in  # 进水流量（m³/h）
+        self.Qras = q_ras # 污泥回流流量（m³/h）
         self.alpha, self.beta, self.delta, self.gamma = self.def_constants(test_type)  # 常数集
 
     def def_constants(self, test_type="SVISN"):
@@ -145,6 +143,8 @@ class StatepointAnalysis:
 
         返回:
             tuple: 包含 x 和 y 坐标的元组 (x, y)。
+            x[1]: x-intercept of the line. 二沉池回流污泥浓度Xr。
+            y[0]: y-intercept of the line. 二沉池表面固体负荷。
         """
         # Assign for x- and y-intercepts
         x_sur_1, y_sur_2 = 0, 0
@@ -195,47 +195,6 @@ class StatepointAnalysis:
         y = self.flux(x, sludge_volume_index)
         return x, y
 
-    def plot_spa(self, q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss, solids_max=15):
-        """
-        绘制状态点分析图。
-        """
-        x_overflow_rate, y_overflow_rate = self.surface_overflow_calc(q_in, tank_area, number_of_tanks, sludge_volume_index)
-        surface_overflow_rate = y_overflow_rate[1] / x_overflow_rate[1]
-        solids_max = x_overflow_rate[1] + 2
-        x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
-        x_flux, y_flux = self.settle_flux(sludge_volume_index, solids_max)
-        
-        state_point = surface_overflow_rate * mixed_liquor_ss
-        
-        X_r = x_underflow_rate[1]
-
-        # 创建一个新的 figure 对象
-        fig, ax = plt.subplots()
-        ax.plot(x_overflow_rate, y_overflow_rate, "g", label="Surface Overflow Rate")
-        ax.plot(x_underflow_rate, y_underflow_rate, "orange", label="Solids Underflow Rate")
-        ax.plot(x_flux, y_flux, "b", label="Settle Flux")
-        ax.plot(mixed_liquor_ss, state_point, "ro", label="State Point")
-        ax.vlines(mixed_liquor_ss, 0, state_point, "r","--")
-        ax.axis([0, solids_max, 0, y_overflow_rate[1]])
-        ax.grid(True)
-
-        # 固定图例位置到右上角
-        
-
-        # 调整 X 轴和 Y 轴刻度为 1
-        ax.xaxis.set_major_locator(plt.MultipleLocator(2.5))
-        ax.yaxis.set_major_locator(plt.MultipleLocator(1))
-
-        txt = f"SOR：{surface_overflow_rate:.2f}，RAS：{q_ras/q_in:.2f}， Return Flow：{q_ras:.1f} m$^3$/h, X_$r$：{X_r:.1f}g/L"
-
-        ax.set_title(f"State Point Analysis:\n {txt}")
-        ax.set_xlabel("Solids Concentration (g/L)")
-        ax.set_ylabel("Solids Flux (kg/m2/h)")
-        ax.legend(loc='upper right')
-
-        # 使用 st.pyplot 显示图表
-        st.pyplot(fig)
-
     def oper_round(self, ref, val):
         """
         对泥水回流流量进行四舍五入操作。
@@ -285,43 +244,229 @@ class StatepointAnalysis:
         lamb_w = min(map(lambertw, [w_input] * 2, [0, -1])) # W func gives two solutions, take the smaller
 
         # Calculate operating variable, q_ras
-        q_ras = float((self.Qin * self.MLSS * k_sp) / lamb_w.real)  # m3/h; convert to Python float
-        op_qras = self.oper_round(self.Qin, q_ras)  # m3/h; convert to Python float
+        q_ras_opt = float((self.Qin * self.MLSS * k_sp) / lamb_w.real)  # m3/h; convert to Python float
+        op_qras = self.oper_round(self.Qin, q_ras_opt)  # m3/h; convert to Python float
 
-        # Plot State Point Analysis Graph
-        underflow_x_intercept = self.solids_underflow_calc(self.Qin, q_ras, self.MLSS, self.TANK_AREA, self.NUMBER_OF_TANKS)[0][1] # g/L
+        return q_ras_opt, op_qras
 
-        #solids_max = round(underflow_x_intercept / 5) * 5 + 2 
-        #self.plot_spa(self.Qin, op_qras, self.TANK_AREA, self.NUMBER_OF_TANKS, self.SVI, self.MLSS, solids_max=solids_max) # g/L; Max solids conc. on x-axis rounded to multiple of 5
-        #print(q_ras, op_qras)
-        return q_ras, op_qras
+    def settle_flux_total(self, sludge_volume_index, solids_max=15):
+        """
+        二沉池的总固体通量，重力沉降和底流出流之和。
+
+        参数:
+            sludge_volume_index (float): 泥水体积指数（SVI）。
+            solids_max (float): 最大污泥浓度（g/L），默认为 15。
+            q_ras (float): 污泥回流流量 (m3/h)。
+ 
+        返回:
+            tuple: 包含 x 和 y 坐标的元组 (x, y)。
+        """
+
+        x = np.linspace(0, solids_max, num=100)
+        y = self.flux(x, sludge_volume_index) + self.Qin / (self.TANK_AREA * self.NUMBER_OF_TANKS) * self.Qin / self.Qras * x 
+        return x, y
+
+
+
+    def plot_spa(self, q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss, solids_max=15):
+        """
+        绘制状态点分析图。
+        """
+        # MLSS Qin q_ras SVI SOR 
+        # 计算SOR曲线
+        x_overflow_rate, y_overflow_rate = self.surface_overflow_calc(q_in, tank_area, number_of_tanks, sludge_volume_index)
+        solids_max = x_overflow_rate[1]*1.5
+
+        # 计算UFO曲线
+        x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
+        x_r = x_underflow_rate[1]  
+
+        # 计算重力沉降曲线 
+        x_flux, y_flux = self.settle_flux(sludge_volume_index, solids_max)
+        
+        # 计算状态点
+        surface_overflow_rate = y_overflow_rate[1] / x_overflow_rate[1]
+        state_point = surface_overflow_rate * mixed_liquor_ss
+
+        # 创建一个新的 figure 对象
+        fig, ax = plt.subplots()
+        ax.plot(x_overflow_rate, y_overflow_rate, "g", label="Surface Overflow Rate")
+        ax.plot(x_underflow_rate, y_underflow_rate, "orange", label="Solids Underflow Rate")
+        ax.plot(x_flux, y_flux, "b", label="Settle Flux")
+        ax.plot(mixed_liquor_ss, state_point, "ro", label="State Point", markersize=5)
+        ax.vlines(mixed_liquor_ss, 0, y_underflow_rate[0]*1.1, "r","--")
+        ax.axis([0, solids_max, 0, y_underflow_rate[0]*1.1])
+        ax.grid(True)
+
+        # 固定图例位置到右上角
+        ax.legend(loc='upper right', fontsize=8)  # 修改：缩小图例字体大小
+
+        # 调整 X 轴和 Y 轴刻度为 1
+        ax.xaxis.set_major_locator(plt.MultipleLocator(2))
+        ax.yaxis.set_major_locator(plt.MultipleLocator(1))
+
+        txt = f"SOR: {surface_overflow_rate:.2f} m/h, RAS: {q_ras/q_in:.2f}, Returnflow: {q_ras:.1f} m$^3$/h, X$_r$: {x_r:.1f}g/L"
+
+        ax.set_title(f"State Point Analysis:\n {txt}", fontsize=10)  # 修改：缩小标题字体大小
+        ax.set_xlabel("Solids Concentration (g/L)")
+        ax.set_ylabel("Solids Flux (kg/m$^2$/h)")
+
+        return fig
+
 
 
 # Streamlit 应用
-def main():
-    st.title("State Point Analysis Calculator")
+def page_ras_optimal_calculation():
+    """
+    RAS Optimal Calculation 页面。
+    计算RAS最优解。
+  
+    """
+    st.title("RAS Optimal Calculation")
     
-    # 输入框
-    number_of_tanks = st.number_input("Number of Secondary Clarifiers", value=3, min_value=1)
-    tank_area = st.number_input("Area of Each Clarifier (m²)", value=1986.0, min_value=1.0)
+    # 输入框，增大步长
+    number_of_tanks = st.number_input("Number of Secondary Clarifiers", value=3, min_value=1, step=1)
+    tank_area = st.number_input("Area of Each Clarifier (m²)", value=1986.0, min_value=1.0, step=100.0)
     test_type = st.selectbox("Test Type", ["SVISN", "SVISS", "SVIGN", "SVIGS","Custom"])
-    sludge_volume_index = st.number_input("Sludge Volume Index (SVI)", value=140.0, min_value=0.0)
-    mixed_liquor_ss = st.number_input("Mixed Liquor Suspended Solids (g/L)", value=4.3, min_value=0.0)
-    q_in = st.number_input("Influent Flow Rate (m³/h)", value=5678.0, min_value=0.0)
+    sludge_volume_index = st.number_input("Sludge Volume Index (SVI)", value=140.0, min_value=0.0, step=5.0)
+    mixed_liquor_ss = st.number_input("Mixed Liquor Suspended Solids (g/L)", value=4.3, min_value=0.0, step=0.1)
+    q_in = st.number_input("Influent Flow Rate (m³/h)", value=5678.0, min_value=0.0, step=100.0)
+
+    # 使用 session_state 存储输入参数和结果
+    if "ras_params" not in st.session_state:
+        st.session_state.ras_params = {
+            "number_of_tanks": number_of_tanks,
+            "tank_area": tank_area,
+            "test_type": test_type,
+            "sludge_volume_index": sludge_volume_index,
+            "mixed_liquor_ss": mixed_liquor_ss,
+            "q_in": q_in,
+            "result": None
+        }
+
+    # 检查参数是否发生变化
+    params_changed = any([
+        number_of_tanks != st.session_state.ras_params["number_of_tanks"],
+        tank_area != st.session_state.ras_params["tank_area"],
+        test_type != st.session_state.ras_params["test_type"],
+        sludge_volume_index != st.session_state.ras_params["sludge_volume_index"],
+        mixed_liquor_ss != st.session_state.ras_params["mixed_liquor_ss"],
+        q_in != st.session_state.ras_params["q_in"]
+    ])
 
     # 计算按钮
-    if st.button("Calculate"):
+    if st.button("Calculate", key=f"calculate_button_{number_of_tanks}_{tank_area}_{test_type}_{sludge_volume_index}_{mixed_liquor_ss}_{q_in}") or params_changed:
+        # 更新 session_state 中的参数
+        st.session_state.ras_params = {
+            "number_of_tanks": number_of_tanks,
+            "tank_area": tank_area,
+            "test_type": test_type,
+            "sludge_volume_index": sludge_volume_index,
+            "mixed_liquor_ss": mixed_liquor_ss,
+            "q_in": q_in
+        }
+
         # 创建 StatepointAnalysis 实例
-        spa = StatepointAnalysis(number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in)
-        q_ras, op_qras = spa.find_state_point()
-        
-        # 显示结果
-        st.write(f"Optimal Q_RAS: {op_qras} m³/h")
-        
-        # 绘制图形
-        fig, ax = plt.subplots()
-        spa.plot_spa(q_in, op_qras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
-        #st.pyplot(fig)
+        spa = StatepointAnalysis(
+            number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in
+        )
+        q_ras_opt, op_qras = spa.find_state_point()
+
+        # 更新结果
+        st.session_state.ras_params["result"] = {
+            "q_ras_opt": q_ras_opt,
+            "op_qras": op_qras,
+            "fig": spa.plot_spa(q_in, op_qras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
+        }
+
+    # 显示结果
+    if st.session_state.ras_params["result"]:
+        st.write(f"Optimal Q_RAS: {st.session_state.ras_params['result']['op_qras']} m³/h", font_size=10)  # 修改：缩小文本字体大小
+        st.pyplot(st.session_state.ras_params["result"]["fig"])
+
+
+def page_shc_analysis():
+    """
+    SHC Analysis 页面
+    计算当前工况下的状态点，并根据SHC状态图进行评价。
+    """
+    st.title("SHC Analysis")
+    
+    # 输入框，增大步长
+    number_of_tanks = st.number_input("Number of Secondary Clarifiers", value=3, min_value=1, step=1)
+    tank_area = st.number_input("Area of Each Clarifier (m²)", value=1986.0, min_value=1.0, step=100.0)
+    test_type = st.selectbox("Test Type", ["SVISN", "SVISS", "SVIGN", "SVIGS","Custom"])
+    sludge_volume_index = st.number_input("Sludge Volume Index (SVI)", value=140.0, min_value=0.0, step=5.0)
+    mixed_liquor_ss = st.number_input("Mixed Liquor Suspended Solids (g/L)", value=4.3, min_value=0.0, step=0.1)
+    q_in = st.number_input("Influent Flow Rate (m³/h)", value=5678.0, min_value=0.0, step=100.0)
+    q_ras = st.number_input("Underflow Rate (m³/h)", value=5678.0, min_value=0.0, step=100.0)
+
+    # 使用 session_state 存储输入参数和结果
+    if "shc_params" not in st.session_state:
+        st.session_state.shc_params = {
+            "number_of_tanks": number_of_tanks,
+            "tank_area": tank_area,
+            "test_type": test_type,
+            "sludge_volume_index": sludge_volume_index,
+            "mixed_liquor_ss": mixed_liquor_ss,
+            "q_in": q_in,
+            "q_ras": q_ras,
+            "result": None
+        }
+
+    # 检查参数是否发生变化
+    params_changed = any([
+        number_of_tanks != st.session_state.shc_params["number_of_tanks"],
+        tank_area != st.session_state.shc_params["tank_area"],
+        test_type != st.session_state.shc_params["test_type"],
+        sludge_volume_index != st.session_state.shc_params["sludge_volume_index"],
+        mixed_liquor_ss != st.session_state.shc_params["mixed_liquor_ss"],
+        q_in != st.session_state.shc_params["q_in"],
+        q_ras != st.session_state.shc_params["q_ras"]
+    ])
+
+    # 计算按钮
+    if st.button("Calculate", key=f"calculate_button_{number_of_tanks}_{tank_area}_{test_type}_{sludge_volume_index}_{mixed_liquor_ss}_{q_in}_{q_ras}") or params_changed:
+        # 更新 session_state 中的参数
+        st.session_state.shc_params = {
+            "number_of_tanks": number_of_tanks,
+            "tank_area": tank_area,
+            "test_type": test_type,
+            "sludge_volume_index": sludge_volume_index,
+            "mixed_liquor_ss": mixed_liquor_ss,
+            "q_in": q_in,
+            "q_ras": q_ras
+        }
+
+        # 创建 StatepointAnalysis 实例
+        spa = StatepointAnalysis(
+            number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in, q_ras
+        )
+        fig = spa.plot_spa(q_in, q_ras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
+
+        # 更新结果
+        st.session_state.shc_params["result"] = {
+            "fig": fig
+        }
+
+    # 显示结果
+    if st.session_state.shc_params["result"]:
+        st.pyplot(st.session_state.shc_params["result"]["fig"])
+
+    # 添加图片
+    st.image("pictures/SHC_chart.png", caption="SHC Chart", use_container_width=True)
+    st.write("**SHC I (underflow condition)** \nif the underflow line happens to fall outside of the flux curve, we cannot get the solids out from the clarifier (settling is insufficient)")
+    st.write("**SHC II (feed load condition)** \nif the state point happens to fall outside of the flux curve, the load in the feed layer is more than what the clarifier can handle at that point (so it goes up eventually, as the clarifier is overloaded).")
+
+
+def main():
+    # 通过左侧导航栏切换页面
+    page = st.sidebar.radio("Select Page", [ "SHC analysis","Optimal RAS calculation"])
+    
+    if page == "Optimal RAS calculation":
+        page_ras_optimal_calculation()
+    elif page == "SHC analysis":
+        page_shc_analysis()
 
 if __name__ == "__main__":
     main()
