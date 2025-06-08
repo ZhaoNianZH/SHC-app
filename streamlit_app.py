@@ -275,12 +275,12 @@ class StatepointAnalysis:
         # MLSS Qin q_ras SVI SOR 
         # 计算SOR曲线
         x_overflow_rate, y_overflow_rate = self.surface_overflow_calc(q_in, tank_area, number_of_tanks, sludge_volume_index)
-        solids_max = x_overflow_rate[1]*1.5
+        
 
         # 计算UFO曲线
         x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
         x_r = x_underflow_rate[1]  
-
+        solids_max = x_r * 1.1
         # 计算重力沉降曲线 
         x_flux, y_flux = self.settle_flux(sludge_volume_index, solids_max)
         
