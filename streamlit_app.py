@@ -280,7 +280,7 @@ class StatepointAnalysis:
         # 计算UFO曲线
         x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
         x_r = x_underflow_rate[1]  
-        solids_max = x_r * 1.5
+        solids_max = x_r * 1.1
         slr_max = max(y_underflow_rate[0],y_overflow_rate[1])
 
         # 计算重力沉降曲线 
