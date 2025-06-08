@@ -297,8 +297,9 @@ class StatepointAnalysis:
         ax.vlines(mixed_liquor_ss, 0, y_underflow_rate[0]*1.1, "r","--")
         
         # 添加标签 "MLSS" 到垂直线的右上角，并设置字体颜色为红色
-        ax.text(mixed_liquor_ss + 0.1, 0.1, f"MLSS:{mixed_liquor_ss}", fontsize=8, ha='left', va='bottom', color='red')
+        ax.text(mixed_liquor_ss + 0.1, 0.1, f"MLSS:{mixed_liquor_ss:.2f}", fontsize=8, ha='left', va='bottom', color='red')
         
+        # 设置坐标轴范围
         ax.axis([0, solids_max, 0, y_underflow_rate[0]*1.1])
         ax.grid(True)
 
@@ -385,7 +386,7 @@ def page_ras_optimal_calculation():
 
     # 显示结果
     if st.session_state.ras_params["result"]:
-        st.write(f"Optimal Q_RAS: {st.session_state.ras_params['result']['op_qras']} m³/h", font_size=10)  # 修改：缩小文本字体大小
+        st.write(f"Optimal Underflow: {st.session_state.ras_params['result']['op_qras']} m$^3$/h", font_size=10)  # 修改：缩小文本字体大小
         st.pyplot(st.session_state.ras_params["result"]["fig"])
 
 
