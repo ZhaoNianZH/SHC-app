@@ -295,6 +295,10 @@ class StatepointAnalysis:
         ax.plot(x_flux, y_flux, "b", label="Settle Flux")
         ax.plot(mixed_liquor_ss, state_point, "ro", label="State Point", markersize=5)
         ax.vlines(mixed_liquor_ss, 0, y_underflow_rate[0]*1.1, "r","--")
+        
+        # 添加标签 "MLSS" 到垂直线的右上角，并设置字体颜色为红色
+        ax.text(mixed_liquor_ss + 0.1, 0.1, f"MLSS:{mixed_liquor_ss}", fontsize=8, ha='left', va='bottom', color='red')
+        
         ax.axis([0, solids_max, 0, y_underflow_rate[0]*1.1])
         ax.grid(True)
 
