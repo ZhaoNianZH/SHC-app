@@ -280,7 +280,9 @@ class StatepointAnalysis:
         # 计算UFO曲线
         x_underflow_rate, y_underflow_rate = self.solids_underflow_calc(q_in, q_ras, mixed_liquor_ss, tank_area, number_of_tanks)
         x_r = x_underflow_rate[1]  
-        solids_max = x_r * 1.1
+        solids_max = x_r * 1.5
+        slr_max = max(y_underflow_rate[0],y_overflow_rate[1]) *1.1
+
         # 计算重力沉降曲线 
         x_flux, y_flux = self.settle_flux(sludge_volume_index, solids_max)
         
@@ -294,13 +296,13 @@ class StatepointAnalysis:
         ax.plot(x_underflow_rate, y_underflow_rate, "orange", label="Solids Underflow Rate")
         ax.plot(x_flux, y_flux, "b", label="Settle Flux")
         ax.plot(mixed_liquor_ss, state_point, "ro", label="State Point", markersize=5)
-        ax.vlines(mixed_liquor_ss, 0, y_underflow_rate[0]*1.1, "r","--")
+        ax.vlines(mixed_liquor_ss, 0, slr_max, "r","--")
         
         # 添加标签 "MLSS" 到垂直线的右上角，并设置字体颜色为红色
         ax.text(mixed_liquor_ss + 0.1, 0.1, f"MLSS:{mixed_liquor_ss:.2f}", fontsize=8, ha='left', va='bottom', color='red')
         
         # 设置坐标轴范围
-        ax.axis([0, solids_max, 0, y_underflow_rate[0]*1.1])
+        ax.axis([0, solids_max, 0, slr_max])
         ax.grid(True)
 
         # 固定图例位置到右上角
