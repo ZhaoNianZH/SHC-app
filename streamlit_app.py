@@ -59,7 +59,7 @@ class StatepointAnalysis:
     它通过计算污泥通量、溢流率和污泥回流率等参数，帮助操作员确定最高效的污泥回流泵速率。
     """
 
-    def __init__(self, number_of_tanks:int, tank_area:float, test_type:str, sludge_volume_index:int, mixed_liquor_ss:float, q_in:float, q_ras:float = None):
+    def __init__(self, number_of_tanks:int, tank_area:float, test_type:str, sludge_volume_index:int, mixed_liquor_ss:float, q_in:float, q_ras:float):
         """
         初始化 StatepointAnalysis 类实例。
 
@@ -338,6 +338,7 @@ def page_ras_optimal_calculation():
     sludge_volume_index = st.number_input("Sludge Volume Index (SVI)", value=140.0, min_value=0.0, step=5.0)
     mixed_liquor_ss = st.number_input("Mixed Liquor Suspended Solids (g/L)", value=4.3, min_value=0.0, step=0.1)
     q_in = st.number_input("Influent Flow Rate (m³/h)", value=5678.0, min_value=0.0, step=100.0)
+    q_ras = st.number_input("Underflow Rate (m³/h)", value=5678.0, min_value=0.0, step=100.0,disabled=True)
 
     # 使用 session_state 存储输入参数和结果
     if "ras_params" not in st.session_state:
@@ -348,6 +349,7 @@ def page_ras_optimal_calculation():
             "sludge_volume_index": sludge_volume_index,
             "mixed_liquor_ss": mixed_liquor_ss,
             "q_in": q_in,
+            "q_ras": q_ras,
             "result": None
         }
 
@@ -358,7 +360,8 @@ def page_ras_optimal_calculation():
         test_type != st.session_state.ras_params["test_type"],
         sludge_volume_index != st.session_state.ras_params["sludge_volume_index"],
         mixed_liquor_ss != st.session_state.ras_params["mixed_liquor_ss"],
-        q_in != st.session_state.ras_params["q_in"]
+        q_in != st.session_state.ras_params["q_in"],
+        q_ras != st.session_state.shc_params["q_ras"]
     ])
 
     # 计算按钮
@@ -370,12 +373,13 @@ def page_ras_optimal_calculation():
             "test_type": test_type,
             "sludge_volume_index": sludge_volume_index,
             "mixed_liquor_ss": mixed_liquor_ss,
+            "q_ras": q_ras,
             "q_in": q_in
         }
 
         # 创建 StatepointAnalysis 实例
         spa = StatepointAnalysis(
-            number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in
+            number_of_tanks, tank_area, test_type, sludge_volume_index, mixed_liquor_ss, q_in, q_ras=None
         )
         q_ras_opt, op_qras = spa.find_state_point()
         fig,txt = spa.plot_spa(q_in, op_qras, tank_area, number_of_tanks, sludge_volume_index, mixed_liquor_ss)
@@ -388,7 +392,7 @@ def page_ras_optimal_calculation():
 
     # 显示结果
     if st.session_state.ras_params["result"]:
-        st.write(f"Optimal Underflow: {st.session_state.ras_params['result']['op_qras']} m$^3$/h", font_size=10)  # 修改：缩小文本字体大小
+        st.write(f"Optimal Underflow Rate: {st.session_state.ras_params['result']['op_qras']} m$^3$/h", font_size=10)  # 修改：缩小文本字体大小
         st.pyplot(st.session_state.ras_params["result"]["fig"])
 
 
