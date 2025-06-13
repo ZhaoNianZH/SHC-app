@@ -312,7 +312,7 @@ class StatepointAnalysis:
         ax.xaxis.set_major_locator(plt.MultipleLocator(2))
         ax.yaxis.set_major_locator(plt.MultipleLocator(1))
 
-        txt = f"SLR: {y_underflow_rate[0]:.1f} (kg/m$^2$/h), SOR: {surface_overflow_rate:.2f} m/h, RAS: {q_ras/q_in:.1f}, Q$_r$: {q_ras:.1f} m$^3$/h, X$_r$: {x_r:.1f}g/L"
+        txt = f"SLR: {y_underflow_rate[0]:.1f} (kg/m$^2$/h), SOR: {surface_overflow_rate:.2f} m/h, RAS: {q_ras/q_in:.2f}, Q$_r$: {q_ras:.1f} m$^3$/h, X$_r$: {x_r:.1f}g/L"
 
         ax.set_title(f"{txt}", fontsize=10)  # 修改：缩小标题字体大小
         ax.set_xlabel("Solids Concentration (g/L)")
