@@ -392,7 +392,7 @@ def page_ras_optimal_calculation():
 
     # 显示结果
     if st.session_state.ras_params["result"]:
-        st.write(f"Optimal Underflow Rate: {st.session_state.ras_params['result']['op_qras']} m$^3$/h", font_size=10)  # 修改：缩小文本字体大小
+        st.markdown(f"<p style='font-size: 10px;'>Optimal Underflow Rate: {st.session_state.ras_params['result']['op_qras']} m$^3$/h</p>", unsafe_allow_html=True)
         st.pyplot(st.session_state.ras_params["result"]["fig"])
 
 

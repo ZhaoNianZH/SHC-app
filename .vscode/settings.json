@@ -1,5 +1,8 @@
 {
     "Lingma.DisplayLanguage": "简体中文",
     "Lingma.PreferredLanguage for AI Chat": "简体中文",
-    "Lingma.PreferredLanguage forCommitMessage": "简体中文"
+    "Lingma.PreferredLanguage forCommitMessage": "简体中文",
+    "python-envs.defaultEnvManager": "ms-python.python:conda",
+    "python-envs.defaultPackageManager": "ms-python.python:conda",
+    "python-envs.pythonProjects": []
 }
